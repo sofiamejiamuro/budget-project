@@ -24,19 +24,34 @@ var budgetController = (function() {
   
   // Instead of store one by one, it is better to make a object
 
+  var calculateTotal = function(type){
+    // We need to use the data stored in exp or inc array, then loop over the correspondant array and then take out the value needed from the object of each element
+    var sum = 0;
+
+    data.allItems[type].forEach(function (current, index, array){
+      sum += current.value;
+    })
+
+    data.totals[type] = sum;
+  };
+
   var data = {
-    allItems :{
-      exp : [],
-      inc : [],
+    allItems: {
+      exp: [],
+      inc: [],
     },
-    totals : {
+    totals: {
       exp: 0,
       inc: 0
-    }
+    },
+    budget: 0,
+    // -1 means does not exist
+    percentage: -1
   }
 
+
   return  {
-    addItem :function(type, des, val){
+    addItem: function(type, des, val){
       
       var newItem, ID;
 
@@ -62,6 +77,31 @@ var budgetController = (function() {
       // Return the new element
       return newItem;
     },
+    calculateBudget: function(){
+      // Calculate total income and expenses
+      calculateTotal('exp');
+      calculateTotal('inc');
+
+      // Calculate the buget: income - expenses
+      data.budget = data.totals.inc - data.totals.exp;
+
+      // Percentage of Income wasted
+      if(data.totals.inc > 0){
+        data.percentage = Math.round((data.totals.exp / data.totals.inc) * 100);
+      } else {
+        data.percentage = -1;
+      }
+
+    },
+    getBudget: function(){
+      return {
+        budget: data.budget,
+        totalInc: data.totals.inc,
+        totalExp: data.totals.exp,
+        percentage: data.percentage,
+      };
+    },
+    // This method exposes the data structure of this module
     testing: function(){
       console.log('data',data);
     }
@@ -69,8 +109,10 @@ var budgetController = (function() {
 
 })();
 
+
 ////////// UI CONTROLLER  ///////////
 var UIController = (function () {
+
   var DOMstrings = {
     inputType:'.add__type',
     inputDescription:'.add__description',
@@ -84,14 +126,14 @@ var UIController = (function () {
     getInput: function(){
       return {
         // select element
-        type : document.querySelector(DOMstrings.inputType).value, // either inc or exp
+        type: document.querySelector(DOMstrings.inputType).value, // either inc or exp
         // input element
-        description : document.querySelector(DOMstrings.inputDescription).value,
+        description: document.querySelector(DOMstrings.inputDescription).value,
         // input element
-        value : document.querySelector(DOMstrings.inputValue).value
+        value: parseFloat(document.querySelector(DOMstrings.inputValue).value)
       }
     },
-    addListItem : function(obj, type){
+    addListItem: function(obj, type){
       var html, newHtml, element;
       // 1. Create HTML string with place holder text
       if ( type === 'inc'){
@@ -110,12 +152,30 @@ var UIController = (function () {
       // Insert the HTML into the DOM
       document.querySelector(element).insertAdjacentHTML('beforeend', newHtml)
     },
+    clearFields: function(){
+      var fields, fieldsArray;
+      fields = document.querySelectorAll(DOMstrings.inputDescription + ',' + DOMstrings.inputValue);
+      // console.log(fields);
+      // a NodeList input description + input value
+
+      fieldsArray = Array.prototype.slice.call(fields);
+      // console.log(fieldsArray);
+      // Array [input description , input value]
+
+      fieldsArray.forEach(function (current, index, array){
+        current.value = "";
+      });
+
+      fieldsArray[0].focus();
+    },
     getDOMstrings: function(){
       return DOMstrings;
     }
   }
 
 })();
+
+
 
 //////// GLOBAL APP CONTROLLER ////////
 
@@ -139,6 +199,17 @@ var controller = (function (budgetCtrl, UICtrl){
     });
   };
 
+  var updateBudget = function(){
+    // 1. Calculate the budget
+    budgetCtrl.calculateBudget();
+
+    // 2. Return the budget
+    var budget =  budgetCtrl.getBudget();
+
+    // 3 . Display the budget on the UI
+    console.log(budget);
+    
+  }
 
   var ctrlAddItem = function(){
     // Declare all variables
@@ -147,17 +218,23 @@ var controller = (function (budgetCtrl, UICtrl){
     input = UIController.getInput();
     // console.log(input);
 
-    // 2. Add the item to the budget controller
-    newItem = budgetController.addItem(input.type, input.description, input.value);
+    if(input.description !== "" && !isNaN(input.value) && input.value > 0){
+      // 2. Add the item to the budget controller
+      newItem = budgetController.addItem(input.type, input.description, input.value);
 
-    // 3. Add the item to the UI
-    UIController.addListItem(newItem, input.type)
-    // 4. Calculate the budget
+      // 3. Add the item to the UI
+      UIController.addListItem(newItem, input.type)
 
-    // 5. Display the budget on the UI
-    
+      // 4. Clear the fields
+      UIController.clearFields()
+
+      // 5. Calculate and update budget
+      updateBudget();
+    } 
 
   };
+
+
 
   // Lets make a init pucblic function in order to execute the function serUpEventListeners
   return {
