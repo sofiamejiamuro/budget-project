@@ -7,6 +7,7 @@ var budgetController = (function() {
     this.id = id;
     this.description = description;
     this.value = value;
+    this.percentage = -1;
   };
 
   var Income = function(id, description, value){
@@ -15,6 +16,10 @@ var budgetController = (function() {
     this.value = value;
   };
 
+  Expense.prototype.calcPercentage = function(totalincome){
+
+    this.percentage = this.value / totalIncome
+  }
   // Create a method through prototype that allows the method do not be attached to each individual object instead ibjects will inherit the method
   
   // How to store all the data?
@@ -105,6 +110,9 @@ var budgetController = (function() {
       } else {
         data.percentage = -1;
       }
+
+    },
+    calculatePercentage: {
 
     },
     getBudget: function(){
@@ -306,8 +314,8 @@ var controller = (function (budgetCtrl, UICtrl){
       // 3. Update and show the new budget
       updateBudget();
 
-       // 6. Calculate and update percentages
-       updatePercentages();
+      // 6. Calculate and update percentages
+      updatePercentages();
     }
     
 
