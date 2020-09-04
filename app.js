@@ -163,9 +163,61 @@ var UIController = (function () {
     expensesLabel:'.budget__expenses--value',
     percentageLabel:'.budget__expenses--percentage',
     container: '.container',
-    expensesPercLabel: '.item__percentage'
+    expensesPercLabel: '.item__percentage',
+    dateLabel: '.budget__title--month'
+  };
+
+  var formatNumber =  function(num, type){
+    var numSplit, int, dec;
+    // + or - before a number
+    // exactly 2 decimal points
+    // comma separating thousands
+
+    // Maath.abs() return the absolute vaue of a number
+    num = Math.abs(num);
+
+    // to fix a method of the number protoype that only allows the numbers passed as a parameter in decimals if there is no decimal 2 zeros appear
+    num = num.toFixed(2); // 2000.58
+
+    // comma separating thousands
+    // .split willl return an array with thw ingers and the decilam part
+    numSplit = num.split('.'); // [2000,58]
+    
+    int = numSplit[0];
+    if(int.length > 3){
+      // subtrings, tkaaes only a part of the string, the fist argument is where we want to start aand the seconf is how many places we want to read
+      //int = int.substr(0, 3) + ',' +  int.substr(1, 3);
+      int = int.substr(0, int.length-3) + ',' +  int.substr(int.length-3, 3);
+    };
+
+    dec = numSplit[1];
+
+    return (type === 'exp' ?  '-':  '+') + ' ' + int + '.' + dec;
+
   }
+
+  // Instead of hack the node list we can create a forEach function alike
+  var nodeListForEach = function(list, callback){
+    for (var i = 0; i < list.length; i++){
+      callback(list[i],i);
+    }
+  } 
+
   return {
+    // Stablish selector option by default
+    addElementOption: function(){
+      var val, select;
+      val = 'inc';
+      select = document.querySelector(DOMstrings.inputType)
+      //console.log(document.querySelector(DOMstrings.inputType).val(val));
+
+      for(var i, j = 0; i = select.options[j]; j++) {
+        if(i.value == 'inc') {
+            select.selectedIndex = j;
+            break;
+        }
+      }
+    },
     // Method to read the input and must be public and retunr a object to acces them together
     getInput: function(){
       return {
@@ -191,7 +243,7 @@ var UIController = (function () {
       // 2. Reeplace the placeholder text with come actual data
       newHtml = html.replace('%id%', obj.id);
       newHtml = newHtml.replace('%description%', obj.description);
-      newHtml = newHtml.replace('%value%', obj.value);
+      newHtml = newHtml.replace('%value%', formatNumber(obj.value, type));
       
       // Insert the HTML into the DOM
       document.querySelector(element).insertAdjacentHTML('beforeend', newHtml)
@@ -219,10 +271,12 @@ var UIController = (function () {
       fieldsArray[0].focus();
     },
     displayBudget: function (obj){
+      var type;
 
-      document.querySelector(DOMstrings.budgetLabel).textContent = obj.budget;
-      document.querySelector(DOMstrings.incomeLabel).textContent = obj.totalInc;
-      document.querySelector(DOMstrings.expensesLabel).textContent = obj.totalExp;
+      obj.budget > 0 ? type = 'inc' : type = 'exp';
+      document.querySelector(DOMstrings.budgetLabel).textContent = formatNumber(obj.budget, type);
+      document.querySelector(DOMstrings.incomeLabel).textContent = formatNumber(obj.totalInc, 'inc');
+      document.querySelector(DOMstrings.expensesLabel).textContent = formatNumber(obj.totalExp,'exp');
       document.querySelector(DOMstrings.percentageLabel).textContent = obj.percentage;
 
       if(obj.percentage > 0){
@@ -235,13 +289,6 @@ var UIController = (function () {
       var fields;
       fields = document.querySelectorAll(DOMstrings.expensesPercLabel);
 
-      // Instead of hack the node list we can create a forEach function alike
-      var nodeListForEach = function(list, callback){
-        for (var i = 0; i < list.length; i++){
-          callback(list[i],i);
-        }
-      } 
-
       nodeListForEach(fields, function(current, index){
         if(percentages[index] > 0){
           current.textContent = percentages[index] + '%'; 
@@ -251,6 +298,32 @@ var UIController = (function () {
         
       })
 
+    },
+    displayMonth: function(){
+      var now, year, month, months;
+      
+      now = new Date();
+      months = [ 'January' , 'February', 'March' , 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      // In the object new Date () months are 0 based  
+      month = now.getMonth()
+      year = now.getFullYear();
+      document.querySelector(DOMstrings.dateLabel).textContent = months[month] + ' ' + year;
+
+    },
+    changedType: function (){
+
+      // querySelector all returns a NodeList of html elements
+      var fields = document.querySelectorAll(
+        DOMstrings.inputType +  ',' + 
+        DOMstrings.inputDescription + ',' +
+        DOMstrings.inputValue
+      );
+
+      nodeListForEach(fields, function(cur){
+        cur.classList.toggle('red-focus')
+      })
+
+      document.querySelector(DOMstrings.inputBtn).classList.toggle('red');
     },
     getDOMstrings: function(){
       return DOMstrings;
@@ -284,6 +357,9 @@ var controller = (function (budgetCtrl, UICtrl){
 
     // Event delegation
     document.querySelector(DOM.container).addEventListener('click', ctrlDeleteItem);
+
+    // Onchange
+    document.querySelector(DOM.inputType).addEventListener('change', UICtrl.changedType);
 
   };
 
@@ -364,6 +440,8 @@ var controller = (function (budgetCtrl, UICtrl){
   return {
     init: function(){
       console.log('Application has started');
+      UICtrl.addElementOption();
+      UICtrl.displayMonth();
       UICtrl.displayBudget({
         budget: 0,
         totalInc: 0,
@@ -371,6 +449,7 @@ var controller = (function (budgetCtrl, UICtrl){
         percentage: 0,
       });
       setUpEventListeners();
+      
     }
   };
 
