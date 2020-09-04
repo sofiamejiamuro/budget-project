@@ -16,10 +16,18 @@ var budgetController = (function() {
     this.value = value;
   };
 
-  Expense.prototype.calcPercentage = function(totalincome){
+  Expense.prototype.calcPercentage = function(totalIncome){
+    if(data.totals.inc > 0){
+      this.percentage = Math.round((this.value / totalIncome) * 100);
 
-    this.percentage = this.value / totalIncome
-  }
+    } else {
+      this.percentage = -1;
+    }
+  };
+
+  Expense.prototype.getPercentage = function(){
+    return this.percentage;
+  };
   // Create a method through prototype that allows the method do not be attached to each individual object instead ibjects will inherit the method
   
   // How to store all the data?
@@ -109,11 +117,19 @@ var budgetController = (function() {
         data.percentage = Math.round((data.totals.exp / data.totals.inc) * 100);
       } else {
         data.percentage = -1;
-      }
+      };
 
     },
-    calculatePercentage: {
-
+    calculatePercentages: function() {
+      data.allItems.exp.forEach(function(current, index, array){
+        current.calcPercentage(data.totals.inc);
+      });
+    },
+    getPercentages: function(){
+      var allPerc = data.allItems.exp.map(function(current, index, array){
+        return current.getPercentage();
+      });
+      return allPerc;
     },
     getBudget: function(){
       return {
@@ -146,7 +162,8 @@ var UIController = (function () {
     incomeLabel:'.budget__income--value',
     expensesLabel:'.budget__expenses--value',
     percentageLabel:'.budget__expenses--percentage',
-    container: '.container'
+    container: '.container',
+    expensesPercLabel: '.item__percentage'
   }
   return {
     // Method to read the input and must be public and retunr a object to acces them together
@@ -214,6 +231,27 @@ var UIController = (function () {
         document.querySelector(DOMstrings.percentageLabel).textContent = '----';
       }
     },
+    displayPercentages: function(percentages){
+      var fields;
+      fields = document.querySelectorAll(DOMstrings.expensesPercLabel);
+
+      // Instead of hack the node list we can create a forEach function alike
+      var nodeListForEach = function(list, callback){
+        for (var i = 0; i < list.length; i++){
+          callback(list[i],i);
+        }
+      } 
+
+      nodeListForEach(fields, function(current, index){
+        if(percentages[index] > 0){
+          current.textContent = percentages[index] + '%'; 
+        } else {
+          current.textContent = '---'; 
+        }
+        
+      })
+
+    },
     getDOMstrings: function(){
       return DOMstrings;
     }
@@ -263,10 +301,11 @@ var controller = (function (budgetCtrl, UICtrl){
 
   var updatePercentages = function(){
     // 1. Calculate percentages
-
+      budgetCtrl.calculatePercentages();
     // 2. Read percentages from the buget controller
-
+      var percentages = budgetCtrl.getPercentages();
     // 3. Update UI
+      UICtrl.displayPercentages(percentages);
   };
 
   var ctrlAddItem = function(){
